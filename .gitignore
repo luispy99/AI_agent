@@ -1,0 +1,16 @@
+/venv
+
+# IMPORTANTE llave API, informacion sensible, NUNCA publicar
+/.env
+
+tests.py
+/calculator/tests.py
+
+/functions/__pycache__
+/calculator/pkg/__pycache__
+
+/calculator/lorem.txt
+/calculator/pkg/morelorem.txt
+
+system_prompt
+
