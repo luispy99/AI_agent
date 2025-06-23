@@ -3,6 +3,10 @@
 # IMPORTANTE llave API, informacion sensible, NUNCA publicar
 /.env
 
+key_file
+*.pem
+*.key
+
 tests.py
 /calculator/tests.py
 
@@ -13,4 +17,3 @@ tests.py
 /calculator/pkg/morelorem.txt
 
 system_prompt
-

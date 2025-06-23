@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -95,6 +96,8 @@ available_functions = types.Tool(
 
 user_prompt = " ".join(args)
 
+MAX_ITERATIONS = 20
+
 messages = [
     types.Content(role="user", parts=[types.Part(text=user_prompt)])
 ]
@@ -111,29 +114,41 @@ When a user asks a question or makes a request, make a function call plan. You c
 
 All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
 """
+for iteration in range(MAX_ITERATIONS):
+    response = client.models.generate_content(
+        model=model_name,
+        contents=messages,
+        config=types.GenerateContentConfig(
+            tools=[available_functions],
+            system_instruction=system_prompt
+        ),
+    )
 
-response = client.models.generate_content(
-    model=model_name,
-    contents=messages,
-    config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt),
-)
+    for candidate in response.candidates:
+        if candidate.content:
+            messages.append(candidate.content)
 
-if response.function_calls:
-    for function_call_part in response.function_calls:
-        function_call_result = call_function(function_call_part, verbose)
-        try:
-            function_result = function_call_result.parts[0].function_response.response
-        except AttributeError:
-            raise RuntimeError("Invalid function response format from LLM")
-        
-        if verbose:
-            print(f"-> {function_result}")
-else:
+    if response.function_calls:
+        for function_call_part in response.function_calls:
+            function_call_result = call_function(function_call_part, verbose)
+
+            messages.append(function_call_result)
+
+            if verbose:
+                try:
+                    print(f"-> {function_call_result.parts[0].function_response.response}")
+                except AttributeError:
+                    raise RuntimeError("Invalid function response format from LLM")
+        continue
+
     print(f"Gemini: {response.text}")
 
-if verbose:
-    usage = response.usage_metadata
-    print()
-    print(f"User prompt: {user_prompt}")
-    print(f"Prompt tokens: {usage.prompt_token_count}")
-    print(f"Response tokens: {usage.candidates_token_count}")
+    if verbose and hasattr(response, "usage_metadata"):
+        usage = response.usage_metadata
+        print()
+        print(f"User prompt: {user_prompt}")
+        print(f"Prompt tokens: {usage.prompt_token_count}")
+        print(f"Response tokens: {usage.candidates_token_count}")
+    break
+else:
+    print("❗ Agent hit max iterations (possible infinite loop)")
